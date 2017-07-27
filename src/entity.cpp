@@ -28,7 +28,7 @@ struct Health
 
 struct Name
 {
-    char* name;
+    char* value;
 };
 
 struct Power
@@ -44,9 +44,21 @@ struct Protection
 using EntityManager = ecs::EntityManager<Health, Power, Protection>;
 using Id = EntityManager::Id;
 
+
+template <typename T, typename = int>
+struct has_value : std::false_type { };
+
+template <typename T>
+struct has_value <T, decltype((void) T::value, 0)> : std::true_type { };
+
 template<typename TComponent>
 void print(TComponent&& c)
 {
+	if constexpr(std::is_reference<TComponent>::value)
+		static_assert(has_value<typename std::remove_reference<TComponent>::type>::value, "TComponent must have a \"value\" member");
+	else
+		static_assert(has_value<TComponent>::value, "TComponent must have a \"value\" member");
+
 	std::cout << "\t" << typeid(c).name() << " = " << c.value << std::endl;
 }
 
@@ -79,17 +91,18 @@ struct SystemAttack
 	}
 };
 
+using PlayerComponent = std::tuple<Health, Power, Protection>;
+
 int main()
 {
     using namespace std;
 
     EntityManager mgr;
 
-    using PlayerComponent = std::tuple<Health, Power, Protection>;
     Id e1 = mgr.createEntity<PlayerComponent>();
     Id e2 = mgr.createEntity<PlayerComponent>();
 
-    mgr.initComponents(e1, Health{100}, Protection{5}, Power{10});
+    mgr.initComponents(e1, Health{100}, Power{10}, Protection{5});
     mgr.initComponents(e2, Health{100}, Power{10}, Protection{5});
 
     SystemAttack atk;
