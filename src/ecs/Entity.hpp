@@ -94,12 +94,16 @@ private:
 #else
 
 /*
- * Class representing an entity
- * Internally, an entity is simply an integer id, and must be unique for a given entity
+ * Class representing an entity.
+ * Internally, an entity is simply an integer id, and must be unique for a given entity.
+ * Id of destroyed entities are not yet recycled.
+ * Thus, the integer type of id must be long enough to represent the number of entity you need ( >= 32 bits is recommended, default is sizeof(std::size_t) )
  */
 class Entity
 {
 	using Id = std::size_t;
+
+	static constexpr Id InvalidId{0};
 };
 
 /*
@@ -110,6 +114,9 @@ class Entity
 template<typename... TComponents>
 class EntityManager
 {
+	/*
+	 * Define an alias to a container type
+	 */
 	template<typename T>
 	using ComponentContainer = std::map<Entity::Id,T>;
 
@@ -170,10 +177,14 @@ public:
 
 private:
 
-	static constexpr Entity::Id InvalidId{0};
+	/*
+	 * Counter used to generate entity id
+	 */
+	Entity::Id m_entityCount{Entity::InvalidId};
 
-	Entity::Id m_entityCount{InvalidId+1};
-
+	/*
+	 * Tuple of containers of all component types
+	 */
 	std::tuple<ComponentContainer<TComponents>...> m_components;
 };
 
