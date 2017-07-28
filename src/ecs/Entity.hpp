@@ -110,7 +110,28 @@ class Entity
 template<typename... TComponents>
 class EntityManager
 {
+	template<typename T>
+	using ComponentContainer = std::map<Entity::Id,T>;
+
 public:
+
+	/*
+	 * Create an entity with uninitialized components
+	 */
+	template<typename... Ts>
+	Entity::Id createEntity();
+
+	/*
+	 * Create an entity with initialized components (copy values from variable list of argument)
+	 */
+	template<typename... Ts>
+	Entity::Id createEntity(Ts&&... components);
+
+	/*
+	 * Create an entity with initialized components (copy values from tuple)
+	 */
+	template<typename... Ts>
+	Entity::Id createEntity_tuple(const std::tuple<Ts...>& components);
 
 	/*
 	 * Add components (uninitialized)
@@ -146,7 +167,25 @@ public:
 	 */
 	template<typename T>
 	T& getComponent(Entity::Id entityId);
+
+private:
+
+	static constexpr Entity::Id InvalidId{0};
+
+	Entity::Id m_entityCount{InvalidId+1};
+
+	std::tuple<ComponentContainer<TComponents>...> m_components;
 };
+
+template<typename... TComponents>
+template<typename T>
+inline T& EntityManager<TComponents...>::getComponent(Entity::Id entityId)
+{
+	static_assert(mul::contains<T,TComponents...>::value,"T must be in TComponents");
+
+	ComponentContainer<T>& components = std::get<ComponentContainer<T>>(m_components);
+	components.erase(entityId);
+}
 
 #endif
 
