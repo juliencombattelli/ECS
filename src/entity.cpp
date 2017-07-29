@@ -28,7 +28,7 @@ struct Health
 
 struct Name
 {
-    char* value;
+    std::string value;
 };
 
 struct Power
@@ -113,63 +113,15 @@ int main()
     return 0;
 }*/
 
-template <typename T, typename = int>
-struct has_value : std::false_type { };
-
-template <typename T>
-struct has_value <T, decltype((void) T::value, 0)> : std::true_type { };
-
-template<typename TComponent>
-void print(TComponent&& c)
-{
-	if constexpr(std::is_reference<TComponent>::value)
-		static_assert(has_value<typename std::remove_reference<TComponent>::type>::value, "TComponent must have a \"value\" member");
-	else
-		static_assert(has_value<TComponent>::value, "TComponent must have a \"value\" member");
-
-	std::cout << "\t" << typeid(c).name() << " = " << c.value << std::endl;
-}
-
-template<typename... Ts>
-void addComponent(int id)
-{
-	std::cout << "Entity #" << id << " from addComponent(int id)" << std::endl;
-
-	std::apply( [](auto&&... args) {
-				print(std::forward<decltype(args)>(args)...);
-			} , std::tuple<Ts...>{} );
-}
-
-template<typename... Ts>
-void addComponent(int id, Ts&&... components)
-{
-	std::cout << "Entity #" << id << " from addComponent(int id, Ts&&... components)" << std::endl;
-
-	print(std::forward<decltype(components)>(components)...);
-}
-
-
-template<typename... Ts>
-void addComponent_tuple(int id, const std::tuple<Ts...>& components)
-{
-	std::cout << "Entity #" << id << " from addComponent_t(int id, const std::tuple<Ts...>& components)" << std::endl;
-
-	std::apply( [](auto&&... args) {
-		print(std::forward<decltype(args)>(args)...);
-	} , components);
-}
-
 int main()
 {
-	std::tuple<Health> tuple{Health{10}};
+	std::tuple<Name,Health> tuple{{"me"},{10}};
 
-	addComponent<Health>(0);
-	addComponent(0, Health{20});
-	//addComponent(0, tuple); // static assert failed : tuple has no "value" member
+	ecs::EntityManager<Health,Name> em;
 
-	//addComponent_t<Health>(0); // build failed no matching function to call
-	//addComponent_t(0, Health{20}); // build failed no matching function to call
-	addComponent_tuple(0, tuple);
+	ecs::Entity::Id e1 = em.createEntity_tuple(tuple);
+
+	std::cout << em.getComponent<Name>(e1).value << std::endl;
 
 	return 0;
 }
