@@ -99,7 +99,7 @@ private:
  * Id of destroyed entities are not yet recycled.
  * Thus, the integer type of id must be long enough to represent the number of entity you need ( >= 32 bits is recommended, default is sizeof(std::size_t) )
  */
-class Entity
+struct Entity
 {
 	using Id = std::size_t;
 
@@ -189,13 +189,56 @@ private:
 };
 
 template<typename... TComponents>
+template<typename... Ts>
+Entity::Id EntityManager<TComponents...>::createEntity()
+{
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"");
+
+	Entity::Id id = ++m_entityCount;
+
+	( ( std::get<ComponentContainer<Ts>>(m_components)[id] = Ts{} ) , ... );
+
+	return id;
+}
+
+template<typename... TComponents>
+template<typename... Ts>
+Entity::Id EntityManager<TComponents...>::createEntity(Ts&&... components)
+{
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"");
+
+	Entity::Id id = ++m_entityCount;
+
+	( ( std::get<ComponentContainer<Ts>>(m_components)[id] = components ) , ... );
+
+	return id;
+}
+
+template<typename... TComponents>
+template<typename... Ts>
+Entity::Id EntityManager<TComponents...>::createEntity_tuple(const std::tuple<Ts...>& components)
+{
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"");
+
+	Entity::Id id = ++m_entityCount;
+
+	( ( std::get<ComponentContainer<Ts>>(m_components)[id] = std::get<Ts>(components) ) , ... );
+
+	/*std::apply( [id,this](auto&&... args) {
+		( (std::get<ComponentContainer<Ts>>(m_components)[id] = args) , ... );
+	} , components );*/
+
+	return id;
+}
+
+template<typename... TComponents>
 template<typename T>
 inline T& EntityManager<TComponents...>::getComponent(Entity::Id entityId)
 {
 	static_assert(mul::contains<T,TComponents...>::value,"T must be in TComponents");
 
 	ComponentContainer<T>& components = std::get<ComponentContainer<T>>(m_components);
-	components.erase(entityId);
+	return components.at(entityId);
 }
 
 #endif
