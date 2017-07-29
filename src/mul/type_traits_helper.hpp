@@ -15,12 +15,11 @@
 /*
  * std::disjunction provider regardless of the standard version
  */
-#if __cplusplus < 201703L
-
+#if __cplusplus < 201500L
 /*
  * Possible implementation from cppreference.com
  *
- * We can add it directly into std namespace since std::disjunction is provided by C++17 (__cplusplus >= 201703)
+ * We can add it directly into std namespace since std::disjunction is provided by C++17 (__cplusplus >= 201500L for GCC)
  */
 namespace std {
 template<class...> struct disjunction : std::false_type { };
@@ -39,12 +38,12 @@ struct disjunction<B1, Bn...>
 /*
  * std::conjunction provider regardless of the standard version
  */
-#if __cplusplus < 201703L
+#if __cplusplus < 201500L
 
 /*
  * Possible implementation from cppreference.com
  *
- * We can add it directly into std namespace since std::conjunction is provided by C++17 (__cplusplus >= 201703)
+ * We can add it directly into std namespace since std::conjunction is provided by C++17 (__cplusplus >= 201500L for GCC)
  */
 namespace std {
 template<class...> struct conjunction : std::true_type { };
@@ -134,6 +133,5 @@ T* tuple_get_helper(std::tuple<Ts...>& tpl)
 }
 } // namespace mul
 #endif
-
 
 #endif /* MUL_TYPE_TRAITS_HELPER_HPP_ */
