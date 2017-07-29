@@ -123,5 +123,9 @@ int main()
 
 	std::cout << em.getComponent<Name>(e1).value << std::endl;
 
+	em.removeComponent<Name,Health>(e1);
+
+	std::cout << em.getComponent<Health>(e1).value << std::endl;
+
 	return 0;
 }
