@@ -113,8 +113,31 @@ int main()
     return 0;
 }*/
 
+std::map<std::string,std::string> data{
+	{"name","me"},
+	{"health","10"}
+};
+
+template<typename T>
+struct pair
+{
+	std::string name;
+	using value_type = T;
+};
+
+std::tuple<pair<Name>,pair<Health>> t;
+
 int main()
 {
+	std::get<pair<Name>>(t).name = "name";
+	std::get<pair<Health>>(t).name = "health";
+
+	if(data.begin()->first == std::get<1>(t).name)
+	{
+		std::remove_reference<decltype(std::get<1>(t))>::type::value_type c{std::stoi(data[std::get<1>(t).name])};
+		std::cout << typeid(decltype(c)).name() << " = " << c.value << std::endl;
+	}
+
 	std::tuple<Name,Health> tuple{{"me"},{10}};
 
 	ecs::EntityManager<Health,Name> em;
@@ -124,8 +147,6 @@ int main()
 	std::cout << em.getComponent<Name>(e1).value << std::endl;
 
 	em.removeComponent<Name,Health>(e1);
-
-	std::cout << em.getComponent<Health>(e1).value << std::endl;
 
 	return 0;
 }

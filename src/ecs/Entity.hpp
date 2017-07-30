@@ -209,7 +209,7 @@ template<typename... TComponents>
 template<typename... Ts>
 Entity::Id EntityManager<TComponents...>::createEntity(Ts&&... components)
 {
-	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"types in Ts must be in TComponents");
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value, ECS_Ts_must_be_subset_of_T);
 
 	Entity::Id id = ++m_entityCount;
 
@@ -222,7 +222,7 @@ template<typename... TComponents>
 template<typename... Ts>
 Entity::Id EntityManager<TComponents...>::createEntity_tuple(const std::tuple<Ts...>& components)
 {
-	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"types in Ts must be in TComponents");
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value, ECS_Ts_must_be_subset_of_T);
 
 	Entity::Id id = ++m_entityCount;
 
@@ -235,7 +235,7 @@ template<typename... TComponents>
 template<typename... Ts>
 void EntityManager<TComponents...>::addComponent(Entity::Id id)
 {
-	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"types in Ts must be in TComponents");
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value, ECS_Ts_must_be_subset_of_T);
 
 	( ( std::get<ComponentContainer<Ts>>(m_components)[id] = Ts{} ) , ... );
 }
@@ -244,7 +244,7 @@ template<typename... TComponents>
 template<typename... Ts>
 void EntityManager<TComponents...>::addComponent(Entity::Id id, Ts&&... components)
 {
-	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"types in Ts must be in TComponents");
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value, ECS_Ts_must_be_subset_of_T);
 
 	( ( std::get<ComponentContainer<Ts>>(m_components)[id] = components ) , ... );
 }
@@ -253,7 +253,7 @@ template<typename... TComponents>
 template<typename... Ts>
 void EntityManager<TComponents...>::addComponent_tuple(Entity::Id id, const std::tuple<Ts...>& components)
 {
-	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"types in Ts must be in TComponents");
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value, ECS_Ts_must_be_subset_of_T);
 
 	( ( std::get<ComponentContainer<Ts>>(m_components)[id] = std::get<Ts>(components) ) , ... );
 }
@@ -262,7 +262,7 @@ template<typename... TComponents>
 template<typename T>
 inline T& EntityManager<TComponents...>::getComponent(Entity::Id entityId)
 {
-	static_assert(mul::contains<T,TComponents...>::value,"type T must be in TComponents");
+	static_assert(mul::contains<T,TComponents...>::value, ECS_T_must_be_included_in_T);
 
 	ComponentContainer<T>& components = std::get<ComponentContainer<T>>(m_components);
 	return components.at(entityId);
@@ -272,7 +272,7 @@ template<typename... TComponents>
 template<typename... Ts>
 inline void EntityManager<TComponents...>::removeComponent(Entity::Id id)
 {
-	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value,"types in Ts must be in TComponents");
+	static_assert(mul::is_subset_of<std::tuple<Ts...>, std::tuple<TComponents...>>::value, ECS_Ts_must_be_subset_of_T);
 
 	( ( std::get<ComponentContainer<Ts>>(m_components).erase(id) ) , ... );
 }
