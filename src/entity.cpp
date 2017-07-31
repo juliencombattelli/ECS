@@ -133,6 +133,9 @@ std::tuple<pair<Name>,pair<Health>> t;
 
 namespace test2
 {
+/*
+ * thanks to Morwenn (https://codereview.stackexchange.com/questions/101137/template-integer-range-version-2)
+ */
 namespace detail
 {
     template<
