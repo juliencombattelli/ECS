@@ -95,10 +95,25 @@ private:
 #else
 
 /*
- * Class representing an entity.
- * Internally, an entity is simply an integer id, and must be unique for a given entity.
- * Id of destroyed entities are not yet recycled.
- * Thus, the integer type of id must be long enough to represent the number of entity you need ( >= 32 bits is recommended, default is sizeof(std::size_t) )
+ * fromString(TComponent& comp, const std::string& str)
+ * 		This function allowing the conversion of a std::string into a component
+ * 		The component "comp" must fulfill the "Component" concept :
+ * 			- a component must have a attribute "value"
+ * 			- type of the value attribute must be streamable via << and >> operator
+ * 		If your component does not fulfill these requirements, you can specialize fromString
+ */
+template<typename TComponent>
+void fromString(TComponent& comp, const std::string& str)
+{
+	std::istringstream(str) >> comp.value;
+}
+/*
+ * Struct Entity
+ * 		Class representing an entity.
+ * 		Internally, an entity is simply an integer id, and must be unique for a given entity.
+ * 		Id of destroyed entities are not yet recycled.
+ * 		Thus, the integer type of id must be long enough to represent the number of entity you need
+ * 			( >= 32 bits is recommended, default is sizeof(std::size_t) )
  */
 struct Entity
 {
@@ -108,9 +123,11 @@ struct Entity
 };
 
 /*
- * Class responsible of :
- * 		- the entities id assignment
- * 		- holding and retrieve the components associate to an entity
+ * class EntityManager
+ * 		Class responsible of :
+ * 			- the entities id assignment
+ * 			- holding and retrieve the components associate to an entity
+ * 			- parse a map of key/value string and construct component following it (TODO: create Parser class for handle that)
  */
 template<typename... TComponents>
 class EntityManager
@@ -175,6 +192,29 @@ public:
 	 */
 	template<typename T>
 	T& getComponent(Entity::Id entityId);
+
+	/*
+	 *
+	 */
+	template<typename TTuple>
+	void parse(Entity::Id entityId, TTuple&& componentMatchingTable, const std::map<std::string,std::string>& data)
+	{
+		mul::for_each_in_tuple(componentMatchingTable, [this,entityId](auto& tupleElement, const auto& datamap)
+		{
+			for(auto&& [name,value] : datamap)
+			{
+				if(name == tupleElement.name)
+				{
+					typename std::remove_reference<decltype(tupleElement)>::type::value_type c{};
+
+					fromString(c,value);
+
+					this->addComponent(entityId, std::forward<decltype(c)>(c));
+				}
+			}
+
+		}, data);
+	}
 
 private:
 
