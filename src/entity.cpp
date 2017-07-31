@@ -17,6 +17,7 @@
 #include <mul/type_traits_helper.hpp>
 #include <mul/stdx/tuple.hpp>
 #include <mul/stdx/index_range.hpp>
+#include <mul/stdx/integer_range.hpp>
 #include <ecs/Entity.hpp>
 
 struct Position
@@ -115,12 +116,32 @@ int main()
 
     return 0;
 }*/
+
 /*
-std::map<std::string,std::string> data{
-	{"name","me"},
-	{"health","10"}
+ * TODO : rename into Parser::ComponentInfo
+ */
+template<typename... TComponents>
+struct Parser
+{
+	template<typename TComponent>
+	struct ComponentInfo
+	{
+		using type = TComponent;
+		std::string name;
+	};
+
+	/*template<typename TTuple>
+	void parse(Entity::Id entityId, TTuple&& componentMatchingTable, const std::map<std::string,std::string>& data)*/
+
+	template<typename TComponent>
+	void setName(const std::string& name)
+	{
+		std::get<ComponentInfo<TComponent>>(m_componentsInfo).name = "name";
+	}
+
+	std::tuple<ComponentInfo<TComponents>...> m_componentsInfo;
 };
-*/
+
 template<typename T>
 struct pair
 {
@@ -128,120 +149,41 @@ struct pair
 	using value_type = T;
 };
 
-std::tuple<pair<Name>,pair<Health>> t;
-
-
-namespace test2
+template<>
+void ecs::fromString<Position>(Position& pos, const std::string& str)
 {
-/*
- * thanks to Morwenn (https://codereview.stackexchange.com/questions/101137/template-integer-range-version-2)
- */
-namespace detail
-{
-    template<
-        typename Integer,
-        typename SequenceBase,
-        Integer Begin,
-        Integer Step,
-        bool IsIncreasing
-    >
-    struct integer_range_impl;
+	std::string::size_type separator = str.find(',');
+	pos.x = stof(str.substr(0, separator));
+	pos.y = stof(str.substr(separator+1));
 
-    template<
-        typename Integer,
-        Integer... N,
-        Integer Begin,
-        Integer Step
-    >
-    struct integer_range_impl<Integer, std::integer_sequence<Integer, N...>, Begin, Step, true>
-    {
-        using type = std::integer_sequence<Integer, (N * Step + Begin)...>;
-    };
-
-    template<
-        typename Integer,
-        Integer... N,
-        Integer Begin,
-        Integer Step
-    >
-    struct integer_range_impl<Integer, std::integer_sequence<Integer, N...>, Begin, Step, false>
-    {
-        using type = std::integer_sequence<Integer, (Begin - N * Step)...>;
-    };
-}
-
-template<
-    typename Integer,
-    Integer Begin,
-    Integer End,
-    Integer Step
->
-using make_integer_range = typename detail::integer_range_impl<
-    Integer,
-    std::make_integer_sequence<
-        Integer,
-        ((Begin < End ? End - Begin : Begin - End) - 1) / Step + 1
-    >,
-    Begin,
-    Step,
-    (Begin < End)
->::type;
-
-template<std::size_t Begin, std::size_t End, std::size_t Step>
-using make_index_range = make_integer_range<std::size_t, Begin, End, Step>;
-
-}
-
-template<typename Tuple, std::size_t... Ind>
-void print(Tuple&& t, std::index_sequence<Ind...> d)
-{
-    ((std::cout << std::get<Ind>(t).name << ' ') , ...);
+	std::cout << typeid(decltype(pos)).name() << " = [" << pos.x << "," << pos.y << "]" << std::endl;
 }
 
 int main()
 {
-	std::get<pair<Name>>(t).name = "namesdcsdcsdcsdc";
-	std::get<pair<Health>>(t).name = "health";
-
-	//print_tuple_impl(t, 0 , ...,  12);
-
-	print(t, test2::make_index_range<0u, 2u, 1u>{});
-
-	/*for(auto i : mul::stdx::index_range(0,std::tuple_size<decltype(t)>::value))
-	{
-		auto& element = mul::stdx::get(t,i);
-		for(const auto& pair : data)
-		{
-			if(pair.first == element.name)
-			{
-				std::stringstream ss(data[element.name]);
-				typename std::remove_reference<decltype(element)>::type::value_type c;
-				ss >> c.value;
-				std::cout << typeid(decltype(c)).name() << " = " << c.value << std::endl;
-			}
-		}
-	}*/
-
-	/*auto f = [&data](auto t, int i)
-	{
-		if(data.begin()->first == std::get<i>(t).name)
-		{
-			typename std::remove_reference<decltype(std::get<i>(t))>::type::value_type c{std::stoi(data[std::get<i>(t).name])};
-			std::cout << typeid(decltype(c)).name() << " = " << c.value << std::endl;
-		}
+	std::map<std::string,std::string> data{
+		{"name","me"},
+		{"health","10"},
+		{"position","2.1,3.2"}
 	};
 
-	detail::for_each(t, f, detail::gen_seq<1>());*/
+	std::tuple<pair<Name>,pair<Health>, pair<Position>> t;
 
-	std::tuple<Name,Health> tuple{{"me"},{10}};
+	std::get<pair<Name>>(t).name = "name";
+	std::get<pair<Health>>(t).name = "health";
+	std::get<pair<Position>>(t).name = "position";
 
-	ecs::EntityManager<Health,Name> em;
+	ecs::EntityManager<Health,Name,Position> em;
 
-	ecs::Entity::Id e1 = em.createEntity_tuple(tuple);
+	ecs::Entity::Id e1 = em.createEntity();
+
+	em.parse(e1, t, data);
 
 	std::cout << em.getComponent<Name>(e1).value << std::endl;
+	std::cout << em.getComponent<Health>(e1).value << std::endl;
+	std::cout << em.getComponent<Position>(e1).x << " , " << em.getComponent<Position>(e1).y << std::endl;
 
-	em.removeComponent<Name,Health>(e1);
+	//em.removeComponent<Name,Health>(e1);
 
 	return 0;
 }
