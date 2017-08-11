@@ -21,6 +21,8 @@
 #include <ecs/Entity.hpp>
 #include <ecs/Parser.hpp>
 
+#include <muParser.h>
+
 struct Position
 {
     float x,y;
@@ -127,30 +129,202 @@ void ecs::fromString<Position>(Position& pos, const std::string& str)
 	pos.y = stof(str.substr(separator+1));
 }
 
+
+template<typename TVal, typename TRes>
+void round(TVal value, TRes& result)
+{
+    static_assert(std::is_floating_point<TVal>::value || std::is_integral<TVal>::value, "TVal must be a floating point or an integral value");
+
+    if constexpr(std::is_floating_point<TRes>::value)
+    {
+        result = std::round(value);
+    }
+    else if constexpr(std::is_same<TRes,long long>::value || std::is_same<TRes,unsigned long long>::value)
+    {
+        result = std::llround(value);
+    }
+    else if constexpr(std::is_integral<TRes>::value)
+    {
+        result = std::lround(value);
+    }
+}
+
+template<typename... Ts>
+class Parser
+{
+public:
+
+    using value_type = mu::value_type;
+
+    Parser()
+    {
+        // We use dot notation in formulae (e.g.: object.member), so add it to charset
+        m_parser.DefineNameChars(_T("0123456789_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ."));
+    }
+
+    void defineConst(const std::string& name, value_type value)
+    {
+        m_parser.DefineConst(name, value);
+    }
+
+    template<typename T>
+    void defineVar(const std::string& name, T& var)
+    {
+        value_type* ptr = &std::get<std::map<T*,value_type>>(m_vars)[&var];
+        *ptr = static_cast<value_type>(var);
+        m_parser.DefineVar(name, ptr);
+    }
+
+    value_type eval(const std::string& formula)
+    {
+        value_type retval = 0;
+
+        try
+        {
+            m_parser.SetExpr(formula);
+            retval = m_parser.Eval();
+
+            mul::for_each_in_tuple(m_vars, [](auto& varmap)
+            {
+                for(auto&& [varptr,value] : varmap)
+                    round(value, *varptr);
+            });
+        }
+        catch(mu::ParserError& e)
+        {
+            std::cout << e.GetMsg() << _T(" (Errc: ") << std::dec << e.GetCode() << _T(")") << std::endl;
+        }
+
+        return retval;
+    }
+
+private:
+
+    mu::Parser m_parser;
+    std::tuple<std::map<Ts*,value_type>...> m_vars;
+};
+
+
+
+
+
+template <typename T, typename = int>
+struct has_value : std::false_type { };
+
+template <typename T>
+struct has_value <T, decltype((void) T::value, 0)> : std::true_type { };
+
+template<typename TComponent>
+void print(TComponent&& c)
+{
+	if constexpr(std::is_reference<TComponent>::value)
+		static_assert(has_value<typename std::remove_reference<TComponent>::type>::value, "TComponent must have a \"value\" member");
+	else
+		static_assert(has_value<TComponent>::value, "TComponent must have a \"value\" member");
+
+	std::cout << "\t" << typeid(c).name() << " = " << c.value << std::endl;
+}
+
+
+struct SystemAttack
+{
+	void update(ecs::EntityManager<Health,Name,Position,Protection,Power>& em, ecs::Entity::Id atk, const std::vector<ecs::Entity::Id>& defs)
+	{
+		Health& atk_hlt = em.getComponent<Health>(atk);
+		Power& atk_pow = em.getComponent<Power>(atk);
+		Protection& atk_pro = em.getComponent<Protection>(atk);
+
+		/*std::cout << "Atk #" << atk << " :" << std::endl;
+		print(atk_hlt);
+		print(atk_pow);
+		print(atk_pro);*/
+
+		for(auto def : defs)
+		{
+			Health& def_hlt = em.getComponent<Health>(def);
+			Power& def_pow = em.getComponent<Power>(def);
+			Protection& def_pro = em.getComponent<Protection>(def);
+
+			/*std::cout << "Def #" << def << " :" << std::endl;
+			print(def_hlt);
+			print(def_pow);
+			print(def_pro);*/
+
+			parser.defineConst("atk.pow", atk_pow.value);
+			parser.defineConst("def.pro", def_pro.value);
+			parser.defineVar("def.hlt", def_hlt.value);
+
+			parser.eval("def.hlt = def.hlt -(atk.pow - def.pro)");
+		}
+	}
+
+	Parser<int,float> parser;
+};
+
+
+/*
+ *  Technique file descriptor
+ */
+/*
+{
+	name : "Burning blade",
+	element : fire,
+	hp_damage_formula : "(atk.pow + atk.mag/2) - (def.pro + def.prom/3)",
+	status : [ {burn,0.6} ],
+	animation : "burning_blade.anim"
+
+}
+*/
+
+
 int main()
 {
-	std::map<std::string,std::string> data
+	std::map<std::string,std::string> data1
 	{
-		{"name","me"},
+		{"name","e1"},
 		{"health","10"},
-		{"position","2.1,3.2"}
+		{"position","2.1,3.2"},
+		{"power","3"},
+		{"protection","1"}
 	};
 
-	ecs::EntityManager<Health,Name,Position> em;
-	ecs::Parser<Health,Name,Position> parser;
+	std::map<std::string,std::string> data2
+	{
+		{"name","e2"},
+		{"health","10"},
+		{"position","2.1,3.2"},
+		{"power","3"},
+		{"protection","1"}
+	};
+
+	ecs::EntityManager<Health,Name,Position,Protection,Power> em;
+	ecs::Parser<Health,Name,Position,Protection,Power> parser;
 
 	parser.setName<Health>("health");
 	parser.setName<Name>("name");
 	parser.setName<Position>("position");
+	parser.setName<Protection>("protection");
+	parser.setName<Power>("power");
+
 
 	ecs::Entity::Id e1 = em.createEntity();
+	ecs::Entity::Id e2 = em.createEntity();
 
-	parser.parse(e1, em, data);
-
+	parser.parse(e1, em, data1);
+	parser.parse(e2, em, data2);
 
 	std::cout << em.getComponent<Name>(e1).value << std::endl;
 	std::cout << em.getComponent<Health>(e1).value << std::endl;
 	std::cout << em.getComponent<Position>(e1).x << " , " << em.getComponent<Position>(e1).y << std::endl;
+
+	SystemAttack sysatk;
+	sysatk.update(em, e1, {e2});
+
+	std::cout << em.getComponent<Name>(e1).value << std::endl;
+	std::cout << em.getComponent<Health>(e1).value << std::endl;
+
+	std::cout << em.getComponent<Name>(e2).value << std::endl;
+	std::cout << em.getComponent<Health>(e2).value << std::endl;
 
 	//em.removeComponent<Name,Health>(e1);
 
