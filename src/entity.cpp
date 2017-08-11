@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <sstream>
 
+#include <json/json.hpp>
+
 #include <mul/type_traits_helper.hpp>
 #include <mul/stdx/tuple.hpp>
 #include <mul/stdx/index_range.hpp>
@@ -22,6 +24,7 @@
 #include <ecs/Parser.hpp>
 
 #include <muParser.h>
+#include <cxxabi.h>
 
 struct Position
 {
@@ -47,6 +50,16 @@ struct Protection
 {
     int value;
 };
+
+using json = nlohmann::json;
+
+json j2 =
+{
+  {"name", "hello"},
+  {"health", 25},
+  {"position", {0.1,0.2}}
+};
+
 /*
 using EntityManager = ecs::EntityManager<Health, Power, Protection>;
 using Id = EntityManager::Id;
@@ -327,6 +340,15 @@ int main()
 	std::cout << em.getComponent<Health>(e2).value << std::endl;
 
 	//em.removeComponent<Name,Health>(e1);
+
+	std::cout << j2.dump(4) << std::endl << std::endl;
+
+	for (auto& it : j2)
+		std::cout << json::iterator(&it).key() << std::endl;
+		//std::cout << abi::__cxa_demangle(typeid(it).name(), nullptr, nullptr, nullptr) << std::endl;
+
+	for (json::iterator it = j2.begin() ; it != j2.end() ; ++it)
+		std::cout << abi::__cxa_demangle(typeid(it).name(), nullptr, nullptr, nullptr) << std::endl;
 
 	return 0;
 }
